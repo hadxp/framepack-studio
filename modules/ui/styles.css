@@ -156,24 +156,24 @@
 
 /* Layout adjustments */
 body, .gradio-container {
-    padding-top: 42px !important; /* Adjusted for new toolbar height (36px - 10px) */
+    padding-top: 30px !important; /* Shorter toolbar offset */
 }
 
 @media (max-width: 848px) {
     body, .gradio-container {
-        padding-top: 48px !important;
+        padding-top: 36px !important;
     }
 }
 
 @media (max-width: 768px) {
     body, .gradio-container {
-        padding-top: 22px !important; /* Adjusted for new toolbar height (32px - 10px) */
+        padding-top: 20px !important; /* Shorter toolbar offset */
     }
 }
 
 @media (max-width: 480px) {
     body, .gradio-container {
-        padding-top: 18px !important; /* Adjusted for new toolbar height (28px - 10px) */
+        padding-top: 16px !important; /* Shorter toolbar offset */
     }
 }
 
@@ -208,6 +208,78 @@ body, .gradio-container {
 
 /* Queue Styles */
 /* Queue Container */
+
+/* Ensure queue text is readable in both light & dark modes */
+.queue-row,
+.queue-row * {
+  color: var(--text-color, #111) !important;
+}
+
+.queue-row-prompt-text,
+.queue-row-setting-label,
+.queue-row-setting-value,
+.queue-row-timings,
+.queue-row-timing-started,
+.queue-row-timing-elapsed,
+.queue-row-timing-completed {
+  color: var(--text-color, #111) !important;
+}
+
+/* Light-theme overrides: these target OS/browser light preference and common Gradio theme attributes.
+   They make the queue backgrounds lighter and adjust pill/text contrast for readability. */
+@media (prefers-color-scheme: light) {
+  /* Make row containers light and add a subtle separation */
+  .queue-row {
+    background-color: transparent !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+  }
+
+  .queue-row-details,
+  .queue-row-prompt,
+  .queue-row-timings,
+  .queue-row-settings {
+    background-color: #f7f7f7 !important;
+    color: #111 !important;
+  }
+
+  /* Lighten/reset preview image border/background */
+  .queue-row-preview img {
+    border-color: rgba(0,0,0,0.06);
+    background: rgba(255,255,255,0.98);
+  }
+
+  /* Ensure pill text is legible and maintain accent */
+  .queue-row-setting-label,
+  .queue-row-setting-value {
+    color: #0b5bd7 !important;
+    background: rgba(74,158,255,0.12) !important;
+  }
+
+  /* Make status badges softer in light mode so they don't create a large dark block */
+  .queue-row-status-pending { background: #ececec !important; }
+  .queue-row-status-running { background: rgba(33,150,243,0.12) !important; }
+  .queue-row-status-completed { background: rgba(76,175,80,0.12) !important; }
+  .queue-row-status-failed { background: rgba(244,67,54,0.12) !important; }
+  .queue-row-status-cancelled { background: rgba(133,77,14,0.08) !important; }
+  .queue-row-status-cancelling { background: rgba(217,119,6,0.12) !important; }
+
+  /* Ensure status icons keep their color */
+  .queue-row-status-icon { color: inherit !important; }
+}
+
+/* Some Gradio builds expose a data-theme attribute; cover that too */
+[data-theme="light"] .queue-row-details,
+[data-theme="light"] .queue-row-prompt,
+[data-theme="light"] .queue-row-timings,
+[data-theme="light"] .queue-row-settings,
+body[data-theme="light"] .queue-row-details,
+body[data-theme="light"] .queue-row-prompt,
+.gradio-container[data-theme="light"] .queue-row-details,
+.gradio-container[data-theme="light"] .queue-row-prompt {
+  background-color: #f7f7f7 !important;
+  color: #111 !important;
+}
+
 .queue-container {
   border-radius: 8px;
   overflow: hidden;
@@ -228,12 +300,14 @@ body, .gradio-container {
 }
 
 .queue-row-details {
-  background-color: rgb(42, 42, 42);
+  background-color: var(--background-fill-primary, #f7f7f7);
+  border: 1px solid rgba(0,0,0,0.06);
 }
 
 .queue-row-prompt {
   padding: 10px;
-  background-color: rgb(42, 42, 42);
+  background-color: var(--background-fill-primary, #f7f7f7);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
 }
 
 .queue-row-prompt-text {
@@ -252,9 +326,10 @@ body, .gradio-container {
   gap: 6px;
   align-items: center;
   padding: 10px;
-  background-color: var(--background-fill-primary);
+  background-color: var(--background-fill-primary, #f7f7f7);
   border-top-left-radius: 15px;
   border-top-right-radius: 15px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
 }
 
 .queue-row-setting-pill {
@@ -352,10 +427,11 @@ body, .gradio-container {
   height: 100%;
   padding: 10px;
   margin-right: 10px;
-  background-color: rgb(42, 42, 42);
+  background-color: var(--background-fill-primary, #f7f7f7);
   border-top-right-radius: 15px;
   border-bottom-left-radius: 15px;
   border-bottom-right-radius: 15px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
 }
 
 /* Preview Image */
@@ -364,8 +440,8 @@ body, .gradio-container {
 }
 .queue-row-preview img {
   border-radius: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0,0,0,0.06);
+  background: rgba(255,255,255,0.9);
   height: 100%;
   object-fit: fill !important;
 }
@@ -393,4 +469,206 @@ body, .gradio-container {
 
 .queue-body::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* --- Toolbar Graphs & Queue Stats --- */
+
+/* Improve toolbar aesthetics */
+#fixed-toolbar {
+  background: rgba(30, 30, 30, 0.85);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: saturate(150%) blur(6px);
+  -webkit-backdrop-filter: saturate(150%) blur(6px);
+  gap: 10px;
+}
+
+/* Queue stats mini stacked bar */
+.queue-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 220px;
+}
+.queue-stats-bar {
+  display: flex;
+  height: 8px;
+  width: 240px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.12);
+}
+.queue-stats-bar .seg {
+  display: block;
+  height: 100%;
+  transition: width 0.35s ease;
+}
+.queue-stats-bar .pending { background: #6b7280; }  /* gray */
+.queue-stats-bar .running { background: #3b82f6; }  /* blue */
+.queue-stats-bar .completed { background: #22c55e; } /* green */
+.queue-stats-labels {
+  font-size: 0.8rem;
+  color: #e5e7eb;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Compact stat cards with percentage bars */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  min-width: 140px;
+}
+.stat-card .stat-label {
+  font-size: 0.7rem;
+  color: #e5e7eb;
+  opacity: 1;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.stat-card .stat-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+}
+.stat-card .stat-bar {
+  height: 6px;
+  width: 100%;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.12);
+  overflow: hidden;
+}
+.stat-card .stat-bar .fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  transition: width 0.35s ease;
+}
+/* Color variants for fills */
+.stat-card.ram .stat-bar .fill {
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+}
+.stat-card.vram .stat-bar .fill {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+.stat-card.gpu .stat-bar .fill {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+/* Ensure HTML stat components are snug */
+.toolbar-stat-html {
+  padding: 0 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .queue-stats-bar { width: 180px; }
+  .queue-stats-labels { font-size: 0.75rem; }
+  .stat-card { min-width: 120px; padding: 5px 8px; }
+}
+
+/* --- Variable-driven updates (no flashing) & compact toolbar --- */
+
+/* Shorter toolbar overall */
+#fixed-toolbar {
+  padding: 0 8px !important;
+  gap: 6px !important;
+}
+
+/* Slightly smaller title */
+.toolbar-title {
+  font-size: 1.2rem !important;
+}
+
+/* Queue stats: bind widths and labels via CSS variables */
+#queue-stats .queue-stats-bar .pending { width: var(--qs-p, 0%); }
+#queue-stats .queue-stats-bar .running { width: var(--qs-r, 0%); }
+#queue-stats .queue-stats-bar .completed { width: var(--qs-c, 0%); }
+#queue-stats .queue-stats-labels::after { content: var(--qs-label, ''); }
+
+/* Make the queue bar a bit slimmer and narrower */
+#queue-stats .queue-stats-bar { height: 6px; width: 200px; }
+
+/* Stack toolbar cards vertically and use variables for values */
+#toolbar-stats-stack,
+#toolbar-stats-container.stats-stack {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap; /* allow wrapping as before */
+  gap: 8px;
+  align-items: center;
+}
+/* Give the stats area more room and allow other toolbar items to shrink */
+#toolbar-stats-container {
+  flex: initial;
+  min-width: 0;
+}
+/* Allow the title/other columns to shrink so stats can stay in one line */
+/* Make queue bar width responsive so it doesn't hog space */
+#queue-stats { 
+  flex: 0 1 auto; 
+  min-width: 160px; 
+}
+#queue-stats .queue-stats-bar { 
+  width: 200px;
+}
+
+/* Compact stat cards */
+#toolbar-stats-container .stat-card {
+  padding: 4px 8px;
+  gap: 2px;
+}
+#toolbar-stats-container .stat-card .stat-bar { height: 4px; }
+/* (reverted) allow natural flex behavior for stat cards */
+
+/* Show value via ::after to avoid text rewrites (prevents flashing) */
+#toolbar-stats-container .stat-card .stat-value {
+  color: transparent; /* hide initial placeholder text */
+  position: relative;
+}
+#toolbar-stats-container .ram .stat-value::after { content: var(--ram-text, 'N/A'); color: #fff; }
+#toolbar-stats-container .vram .stat-value::after { content: var(--vram-text, 'N/A'); color: #fff; }
+#toolbar-stats-container .gpu  .stat-value::after { content: var(--gpu-text, 'N/A');  color: #fff; }
+
+
+/* Bind fill widths to CSS variables for smooth transitions without DOM churn */
+#toolbar-stats-container .ram  .stat-bar .fill { width: var(--ram-fill, 0%); }
+#toolbar-stats-container .vram .stat-bar .fill { width: var(--vram-fill, 0%); }
+#toolbar-stats-container .gpu  .stat-bar .fill { width: var(--gpu-fill, 0%); }
+
+/* --- Queue Row Action Button Styles --- */
+.queue-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.queue-row-action-btn {
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.06);
+  cursor: pointer;
+  background: rgba(74,158,255,0.12);
+  color: var(--text-color, #111);
+}
+.queue-row-action-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.queue-row-action-btn[data-action="cancel"] {
+  background: rgba(217, 119, 6, 0.15);
+  color: #d97706;
+  border-color: rgba(217,119,6,0.25);
+}
+.queue-row-action-btn[data-action="remove"] {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-color, #111);
 }

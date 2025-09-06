@@ -1,6 +1,7 @@
 import gradio as gr
 import time
 import logging
+import json
 from modules.video_queue import JobStatus
 from modules.ui.template_loader import (
     render_thumbnail_html,
@@ -202,6 +203,9 @@ def create_queue_ui():
                     render_queue([]),  # Start with empty queue
                     label="Job Queue",
                 )
+            # Hidden bridge components for per-item queue actions
+            queue_action_input = gr.Textbox(visible=False, elem_id="queue-action-input")
+            queue_action_trigger = gr.Button("Queue Action", visible=False, elem_id="queue-action-trigger")
             with gr.Accordion("Queue Documentation", open=False):
                 gr.Markdown(get_queue_documentation())
     return {
@@ -216,6 +220,8 @@ def create_queue_ui():
         "confirm_cancel_row": confirm_cancel_row,
         "confirm_cancel_yes_btn": confirm_cancel_yes_btn,
         "confirm_cancel_no_btn": confirm_cancel_no_btn,
+        "queue_action_input": queue_action_input,
+        "queue_action_trigger": queue_action_trigger,
     }
 
 
@@ -241,9 +247,35 @@ def connect_queue_events(q, g, f, job_queue):
         job_queue.export_queue_to_zip()
         return f["update_stats"]()
 
+    def handle_queue_action(action_json):
+        """
+        Handle per-item queue actions sent from the custom HTML (cancel/remove).
+        Expects a JSON string: {"action": "cancel"|"remove", "job_id": "<id>"}
+        """
+        try:
+            data = json.loads(action_json) if action_json else {}
+            action = data.get("action")
+            job_id = data.get("job_id")
+            if not job_id or not action:
+                return f["update_stats"]()
+            if action == "cancel":
+                job_queue.cancel_job(job_id)
+            elif action == "remove":
+                # remove is allowed for completed/failed/cancelled jobs
+                job_queue.remove_job(job_id)
+        except Exception as e:
+            logging.error(f"Queue action error: {e}")
+        return f["update_stats"]()
+
     q["refresh_button"].click(
         fn=f["update_stats"],
         inputs=[],
+        outputs=[q["queue_status"], q["queue_stats_display"]],
+    )
+    # Bridge: trigger from custom HTML to perform per-item actions and refresh
+    q["queue_action_trigger"].click(
+        fn=handle_queue_action,
+        inputs=[q["queue_action_input"]],
         outputs=[q["queue_status"], q["queue_stats_display"]],
     )
     q["clear_queue_button"].click(

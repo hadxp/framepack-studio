@@ -1614,54 +1614,56 @@ def tb_handle_export_video(
 
 
 def tb_get_formatted_toolbar_stats():
-    vram_full_str = "VRAM: N/A"
-    gpu_full_str = "GPU: N/A"
-    ram_full_str = "RAM: N/A"
-
-    vram_component_visible = False
-    gpu_component_visible = False
+    """
+    Returns a CSS <style> snippet that updates variables for the static toolbar stat cards.
+    This avoids DOM replacement and prevents flashing.
+    """
+    # Defaults
+    ram_pct = 0
+    ram_value_str = "N/A"
+    vram_pct = 0
+    vram_value_str = "N/A"
+    gpu_load_pct = 0
+    gpu_value_str = "N/A"
 
     try:
+        # RAM via psutil
         ram_info_psutil = psutil.virtual_memory()
         ram_used_gb = ram_info_psutil.used / (1024**3)
         ram_total_gb = ram_info_psutil.total / (1024**3)
-        ram_full_str = f"RAM: {ram_used_gb:.1f}/{round(ram_total_gb)}GB ({round(ram_info_psutil.percent)}%)"
+        ram_pct = int(round(ram_info_psutil.percent))
+        ram_value_str = f"{ram_used_gb:.1f}/{round(ram_total_gb)}GB ({ram_pct}%)"
 
+        # GPU/VRAM via nvidia-smi if available
         if torch.cuda.is_available():
             _, nvidia_metrics, _ = SystemMonitor.get_nvidia_gpu_info()
             if nvidia_metrics:
                 vram_used = nvidia_metrics.get("memory_used_gb", 0.0)
                 vram_total = nvidia_metrics.get("memory_total_gb", 0.0)
-                vram_full_str = f"VRAM: {vram_used:.1f}/{round(vram_total)}GB"
-                vram_component_visible = True
+                vram_pct = int(round((vram_used / vram_total) * 100)) if vram_total else 0
+                vram_value_str = f"{vram_used:.1f}/{round(vram_total)}GB ({vram_pct}%)"
 
                 temp = nvidia_metrics.get("temperature", 0.0)
                 load = nvidia_metrics.get("utilization", 0.0)
-                gpu_full_str = f"GPU: {temp:.0f}°C {load:.0f}%"
-                gpu_component_visible = True
-
+                gpu_load_pct = int(round(load))
+                gpu_value_str = f"{temp:.0f}°C {gpu_load_pct}%"
     except Exception as e:
-        print(
-            f"Error getting system stats values for toolbar (from toolbox_app.py): {e}"
-        )
-        ram_full_str = "RAM: Error"
-        is_nvidia_expected = torch.cuda.is_available()
-        if is_nvidia_expected:
-            vram_full_str = "VRAM: Error"
-            gpu_full_str = "GPU: Error"
-            vram_component_visible = True
-            gpu_component_visible = True
-        else:
-            vram_full_str = "VRAM: N/A"
-            gpu_full_str = "GPU: N/A"
-            vram_component_visible = False
-            gpu_component_visible = False
+        print(f"Error getting system stats values for toolbar (from toolbox_app.py): {e}")
 
-    return (
-        gr.update(value=ram_full_str),
-        gr.update(value=vram_full_str, visible=vram_component_visible),
-        gr.update(value=gpu_full_str, visible=gpu_component_visible),
-    )
+    css_vars = f"""
+<style id="toolbar-stats-vars">
+#toolbar-stats-container{{
+  --ram-fill: {ram_pct}%;
+  --ram-text: '{ram_value_str}';
+  --vram-fill: {vram_pct}%;
+  --vram-text: '{vram_value_str}';
+  --gpu-fill: {gpu_load_pct}%;
+  --gpu-text: '{gpu_value_str}';
+}}
+</style>
+""".strip()
+
+    return gr.update(value=css_vars)
 
 
 # --- Gradio Interface ---

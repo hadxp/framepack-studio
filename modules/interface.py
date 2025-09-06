@@ -25,6 +25,7 @@ from modules.ui.queue import (
 )
 from modules.ui.outputs import create_outputs_ui, connect_outputs_events
 from modules.ui.settings import create_settings_ui, connect_settings_events
+from modules.ui.audio import create_audio_ui, connect_audio_events
 
 logger = logging.getLogger(__name__)
 logger.info("Interface module loaded.")
@@ -70,8 +71,21 @@ def create_interface(
             if str(j.status) in ["JobStatus.RUNNING", "JobStatus.CANCELLING"]
         )
         completed_count = sum(1 for j in jobs if str(j.status) == "JobStatus.COMPLETED")
-        queue_stats_text = f"<p style='margin:0;color:white;' class='toolbar-text'>Queue: {pending_count} | Running: {running_count} | Completed: {completed_count}</p>"
-        return queue_status_data, queue_stats_text
+        total = max(1, pending_count + running_count + completed_count)
+        p_pct = int(round((pending_count / total) * 100))
+        r_pct = int(round((running_count / total) * 100))
+        c_pct = 100 - p_pct - r_pct
+        queue_stats_vars_css = f"""
+<style id="queue-stats-vars">
+#queue-stats{{
+  --qs-p: {p_pct}%;
+  --qs-r: {r_pct}%;
+  --qs-c: {c_pct}%;
+  --qs-label: 'Q: {pending_count} • R: {running_count} • C: {completed_count}';
+}}
+</style>
+"""
+        return queue_status_data, queue_stats_vars_css
 
     # --- UI Creation ---
     with open("modules/ui/styles.css", "r") as f:
@@ -86,38 +100,67 @@ def create_interface(
             gr.HTML(
                 f"""<div style="display: flex; align-items: center;"><h1 class='toolbar-title'>FP Studio</h1><p class='toolbar-version'>{APP_VERSION_DISPLAY}</p><p class='toolbar-patreon'><a href='https://patreon.com/Colinu' target='_blank'>Support on Patreon</a></p></div>"""
             )
-            queue_stats_display = gr.Markdown(
-                "<p style='margin:0;color:white;' class='toolbar-text'>Queue: 0 | Running: 0 | Completed: 0</p>"
+            queue_stats_display = gr.HTML(
+                """
+                <div id='queue-stats' class='queue-stats'>
+                  <div class='queue-stats-bar'>
+                    <span class='seg pending'></span>
+                    <span class='seg running'></span>
+                    <span class='seg completed'></span>
+                  </div>
+                  <div class='queue-stats-labels'></div>
+                </div>
+                """
             )
-            toolbar_ram_display_component = gr.Textbox(
-                value="RAM: N/A",
-                interactive=False,
-                lines=1,
-                max_lines=1,
-                show_label=False,
-                container=False,
-                elem_id="toolbar-ram-stat",
-                elem_classes="toolbar-stat-textbox",
+            queue_stats_vars = gr.HTML(
+                """
+                <style id="queue-stats-vars">
+                #queue-stats{
+                  --qs-p: 0%;
+                  --qs-r: 0%;
+                  --qs-c: 0%;
+                  --qs-label: 'Q: 0 • R: 0 • C: 0';
+                }
+                </style>
+                """
             )
-            toolbar_vram_display_component = gr.Textbox(
-                value="VRAM: N/A",
-                interactive=False,
-                lines=1,
-                max_lines=1,
-                show_label=False,
-                container=False,
-                elem_id="toolbar-vram-stat",
-                elem_classes="toolbar-stat-textbox",
+            
+            toolbar_stats_container = gr.HTML(
+                """
+                <div class="stats-stack">
+                  <div class='stat-card ram'>
+                    <span class='stat-label'>RAM</span>
+                    <span class='stat-value'>N/A</span>
+                    <div class='stat-bar'><span class='fill'></span></div>
+                  </div>
+                  <div class='stat-card vram'>
+                    <span class='stat-label'>VRAM</span>
+                    <span class='stat-value'>N/A</span>
+                    <div class='stat-bar'><span class='fill'></span></div>
+                  </div>
+                  <div class='stat-card gpu'>
+                    <span class='stat-label'>GPU</span>
+                    <span class='stat-value'>N/A</span>
+                    <div class='stat-bar'><span class='fill'></span></div>
+                  </div>
+                </div>
+                """,
+                elem_id="toolbar-stats-container",
+                elem_classes="toolbar-stat-html",
             )
-            toolbar_gpu_display_component = gr.Textbox(
-                value="GPU: N/A",
-                interactive=False,
-                lines=1,
-                max_lines=1,
-                show_label=False,
-                container=False,
-                elem_id="toolbar-gpu-stat",
-                elem_classes="toolbar-stat-textbox",
+            toolbar_stats_vars = gr.HTML(
+                """
+                <style id="toolbar-stats-vars">
+                #toolbar-stats-container{
+                  --ram-fill: 0%;
+                  --ram-text: 'N/A';
+                  --vram-fill: 0%;
+                  --vram-text: 'N/A';
+                  --gpu-fill: 0%;
+                  --gpu-text: 'N/A';
+                }
+                </style>
+                """
             )
 
         # --- Tabs ---
@@ -133,13 +176,16 @@ def create_interface(
 
             with gr.Tab("Queue", id="queue_tab"):
                 q = create_queue_ui()
-                q["queue_stats_display"] = queue_stats_display
+                q["queue_stats_display"] = queue_stats_vars
 
             with gr.Tab("Outputs", id="outputs_tab"):
                 o = create_outputs_ui(settings)
 
             with gr.Tab("Post-processing", id="toolbox_tab"):
                 toolbox_ui_layout, tb_target_video_input = tb_create_video_toolbox_ui()
+
+            with gr.Tab("Audio", id="audio_tab"):
+                a = create_audio_ui(settings)
 
             with gr.Tab("Settings", id="settings_tab"):
                 s = create_settings_ui(
@@ -267,6 +313,7 @@ def create_interface(
         connect_settings_events(
             s, g, settings, create_latents_layout_update, tb_processor
         )
+        connect_audio_events(a, settings)
 
         def refresh_loras():
             if enumerate_lora_dir_fn:
@@ -336,9 +383,7 @@ def create_interface(
             fn=tb_get_formatted_toolbar_stats,
             inputs=None,
             outputs=[
-                toolbar_ram_display_component,
-                toolbar_vram_display_component,
-                toolbar_gpu_display_component,
+                toolbar_stats_vars,
             ],
         )
 

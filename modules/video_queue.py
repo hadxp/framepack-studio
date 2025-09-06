@@ -1035,6 +1035,45 @@ class VideoJobQueue:
             traceback.print_exc()
             return 0
 
+    def remove_job(self, job_id):
+        """Remove a single job from the queue if it is not active.
+
+        Allows removal when job status is COMPLETED, FAILED, or CANCELLED.
+        Returns True if removed, False otherwise.
+        """
+        removed = False
+        try:
+            with self.lock:
+                job = self.jobs.get(job_id)
+                if not job:
+                    return False
+
+                # For pending jobs, prefer users to use cancel_job so the worker loop can skip it cleanly.
+                if job.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED]:
+                    # Ensure we are not deleting the current running job by mistake
+                    if self.current_job and self.current_job.id == job_id:
+                        return False
+                    del self.jobs[job_id]
+                    removed = True
+
+            if removed:
+                try:
+                    self.save_queue_to_json()
+                except Exception as e:
+                    print(f"Error saving queue state after remove_job: {e}")
+                # Sync images to clean up files for this job id
+                try:
+                    self.synchronize_queue_images()
+                except Exception as e:
+                    print(f"Error synchronizing queue images after remove_job: {e}")
+
+            return removed
+        except Exception as e:
+            import traceback
+            print(f"Error in remove_job: {e}")
+            traceback.print_exc()
+            return False
+
     def get_queue_position(self, job_id):
         """Get position in queue (0 = currently running)"""
         with self.lock:
