@@ -58,19 +58,25 @@
 }
 
 /* Toolbar Patreon link */
-.toolbar-patreon {
+.toolbar-patreon, .toolbar-discord {
     margin: 0 0 0 20px;
     color: white;
     font-size: 0.9rem;
     white-space: nowrap;
     display: inline-block;
 }
-.toolbar-patreon a {
+.toolbar-patreon a, .toolbar-discord a {
     color: white;
     text-decoration: none;
 }
-.toolbar-patreon a:hover {
+.toolbar-patreon a:hover, .toolbar-discord a:hover {
     text-decoration: underline;
+}
+
+/* Normalize toolbar icon size */
+.toolbar-patreon svg, .toolbar-discord svg {
+    height: 30px;
+    vertical-align: middle;
 }
 
 /* Toolbar Version number */
@@ -84,7 +90,7 @@
 
 /* Responsive design for screens */
 @media (max-width: 1147px) {
-    .toolbar-patreon, .toolbar-version { /* Hide both on smaller screens */
+    .toolbar-patreon, .toolbar-discord, .toolbar-version { /* Hide both on smaller screens */
         display: none;
     }
     .footer-patreon, .footer-version { /* Show both in footer on smaller screens */

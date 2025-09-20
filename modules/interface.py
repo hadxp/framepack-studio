@@ -91,6 +91,20 @@ def create_interface(
     with open("modules/ui/styles.css", "r") as f:
         css = make_progress_bar_css() + f.read()
 
+    # Prepare Patreon SVG inline to ensure it renders regardless of webroot
+    try:
+        with open("patreon.svg", "r", encoding="utf-8") as pf:
+            patreon_svg_inline = pf.read()
+    except Exception:
+        patreon_svg_inline = "<span>Patreon</span>"
+
+    # Prepare Discord SVG inline to ensure it renders regardless of webroot
+    try:
+        with open("discord.svg", "r", encoding="utf-8") as df:
+            discord_svg_inline = df.read()
+    except Exception:
+        discord_svg_inline = "<span>Discord</span>"
+
     current_theme = settings.get("gradio_theme", "default")
     block = gr.Blocks(css=css, title="FramePack Studio", theme=current_theme).queue()
 
@@ -99,7 +113,7 @@ def create_interface(
         with gr.Row(elem_id="fixed-toolbar"):
             with gr.Column(scale=1, min_width=250):
                 gr.HTML(
-                    f"""<div style="display: flex; align-items: center;"><h1 class='toolbar-title'>FP Studio</h1><p class='toolbar-version'>{APP_VERSION_DISPLAY}</p><p class='toolbar-patreon'><a href='https://patreon.com/Colinu' target='_blank'><img src="patreon.svg"/></a></p></div>"""
+                    f"""<div style="display: flex; align-items: center;"><h1 class='toolbar-title'>FP Studio</h1><p class='toolbar-version'>{APP_VERSION_DISPLAY}</p><p class='toolbar-patreon'><a href='https://patreon.com/Colinu' target='_blank'>{patreon_svg_inline}</a></p><p class='toolbar-discord'><a href='https://discord.com/invite/MtuM7gFJ3V' target='_blank'>{discord_svg_inline}</a></p></div>"""
                 )
             with gr.Column(scale=3, min_width=250, elem_id="toolbar-right-col"):
                 queue_stats_display = gr.HTML(
