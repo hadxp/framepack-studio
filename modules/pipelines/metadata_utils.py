@@ -257,36 +257,43 @@ def create_metadata(job_params, job_id, settings, save_placeholder=False):
     # Add LoRA information if present
     selected_loras = job_params.get("selected_loras", [])
     lora_values = job_params.get("lora_values", [])
+    lora_loaded_names = job_params.get("lora_loaded_names", [])
 
     if isinstance(selected_loras, list) and len(selected_loras) > 0:
         lora_data = {}
-        for i, lora_name in enumerate(selected_loras):
+        for lora_name in selected_loras:
             try:
-                # Use the index from selected_loras, not from lora_loaded_names
-                has_lora_values = lora_values is not None and len(lora_values) > 0
-                weight = (
-                    lora_values[i] if has_lora_values and i < len(lora_values) else 1.0
-                )
+                weight = 1.0
+                # Prefer mapping by lora_loaded_names if available and aligned to lora_values
+                if (
+                    isinstance(lora_loaded_names, list)
+                    and isinstance(lora_values, list)
+                    and len(lora_values) >= 1
+                ):
+                    if (
+                        len(lora_loaded_names) == len(lora_values)
+                        and lora_name in lora_loaded_names
+                    ):
+                        idx = lora_loaded_names.index(lora_name)
+                        weight = lora_values[idx] if idx < len(lora_values) else 1.0
+                    elif len(selected_loras) == len(lora_values):
+                        # Fallback: positional mapping when lengths match selected list
+                        idx = selected_loras.index(lora_name)
+                        weight = lora_values[idx]
+                elif isinstance(lora_values, list) and len(lora_values) == len(selected_loras):
+                    # Fallback when no loaded_names but lengths match
+                    idx = selected_loras.index(lora_name)
+                    weight = lora_values[idx]
 
-                # Handle different types of weight values
+                # Normalize weight types
                 if isinstance(weight, np.ndarray):
-                    # Convert NumPy array to a scalar value
-                    weight_value = (
-                        float(weight.item())
-                        if weight.size == 1
-                        else float(weight.mean())
-                    )
+                    weight_value = float(weight.item()) if weight.size == 1 else float(weight.mean())
                 elif isinstance(weight, list):
-                    # Handle list type weights
-                    has_items = weight is not None and len(weight) > 0
-                    weight_value = float(weight[0]) if has_items else 1.0
+                    weight_value = float(weight[0]) if len(weight) > 0 else 1.0
                 else:
-                    # Handle scalar weights
                     weight_value = float(weight) if weight is not None else 1.0
 
                 lora_data[lora_name] = weight_value
-            except (ValueError, IndexError):
-                lora_data[lora_name] = 1.0
             except Exception:
                 lora_data[lora_name] = 1.0
                 traceback.print_exc()
