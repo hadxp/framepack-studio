@@ -30,3 +30,8 @@ gfpgan>=1.3.5
 psutil
 realesrgan
 colorlog
+
+
+# mmaudio
+moviepy
+-r ./modules/MMAudio/requirements.txt
