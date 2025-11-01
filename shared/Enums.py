@@ -4,6 +4,8 @@ from importlib.util import find_spec
 
 from shared.StrEnum import StrEnum
 
+logger = logging.getLogger(__name__)
+
 
 class QuantizationFormat(StrEnum):
     normal_float_4bit = auto()
@@ -12,7 +14,6 @@ class QuantizationFormat(StrEnum):
     NONE = brain_floating_point_16bit
     DEFAULT = NONE
 
-    __logger = logging.getLogger(__name__)
 
     @staticmethod
     def supported_values() -> list[str]:
@@ -22,19 +23,19 @@ class QuantizationFormat(StrEnum):
     @staticmethod
     def safe_parse(value: "str | QuantizationFormat") -> "QuantizationFormat":
         if find_spec("bitsandbytes") is None:
-            QuantizationFormat.__logger.error(
+            logger.error(
                 "bitsandbytes not found, defaulting to no quantization. https://docs.framepackstudio.com/help"
             )
             # If bitsandbytes is not installed, we can not quantize, so return NONE
             return QuantizationFormat.NONE
 
-        QuantizationFormat.__logger.debug(f"QuantizationFormat: {value}")
+        logger.debug(f"QuantizationFormat: {value}")
         if isinstance(value, QuantizationFormat):
             return value
         try:
             return QuantizationFormat(value)
         except ValueError:
-            QuantizationFormat.__logger.exception(
+            logger.exception(
                 f"Invalid QuantizationFormat value: {value}, defaulting to {QuantizationFormat.DEFAULT}."
             )
             return QuantizationFormat.DEFAULT
@@ -45,7 +46,6 @@ class LoraLoader(StrEnum):
     LORA_READY = "lora_ready"
     DEFAULT = LORA_READY
 
-    __logger = logging.getLogger(__name__)
 
     @staticmethod
     def supported_values() -> list[str]:
@@ -59,7 +59,7 @@ class LoraLoader(StrEnum):
         try:
             return LoraLoader(value)
         except ValueError:
-            LoraLoader.__logger.exception(
+            logger.exception(
                 f"Invalid LoraLoader value: {value}, defaulting to {LoraLoader.DEFAULT}."
             )
             return LoraLoader.DEFAULT

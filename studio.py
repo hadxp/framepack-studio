@@ -265,7 +265,7 @@ def enumerate_lora_dir() -> list[str]:
                         )
                         lora_name = str(PurePath(lora_relative_path).with_suffix(""))
                         found_files.append(lora_name)
-            found_files.sort()
+            found_files.sort(key=lambda s: s.casefold())
             print(f"Found LoRAs: {len(found_files)}")
             # Temp solution for only 1 lora
             if len(found_files) == 1:
