@@ -5,9 +5,10 @@ import os
 import json
 import logging
 
-from modules.ui.audio import _ensure_mmaudio_on_path
+from modules.ui.audio import _ensure_mmaudio_on_path, _ensure_melqc_on_path
 
 _ensure_mmaudio_on_path()
+_ensure_melqc_on_path()
 
 from mmaudio.eval_utils import all_model_cfg  # noqa: E402
 
@@ -38,8 +39,8 @@ def create_outputs_ui(settings):
 
             gen_audio_acc = gr.Accordion(label="Audio", open=False, visible=False)
             with gen_audio_acc:
-                with gr.Accordion(label="Generate"):
-                    audio_model_dropdown = gr.Dropdown(
+                with gr.Accordion(label="MMAudio"):
+                    mmaudio_model_dropdown = gr.Dropdown(
                         label="Select mmaudio model",
                         choices=all_model_cfg.keys(),
                         multiselect=False,
@@ -47,19 +48,33 @@ def create_outputs_ui(settings):
                         info="Select one mmaudio model to use, to generate audio",
                         # scale=1,
                     )
-                    overwrite_audio_chkbox = gr.Checkbox(
+                    mmaudio_overwrite_chkbox = gr.Checkbox(
                         label="Overwrite audio", visible=False
                     )
 
                     with gr.Blocks():
-                        audio_prompt_chkbox = gr.Checkbox(label="Append")
-                        audio_prompt_txt = gr.Textbox(label="Positive prompt")
+                        mmaudio_prompt_chkbox = gr.Checkbox(label="Append")
+                        mmaudio_prompt_txt = gr.Textbox(label="Positive prompt")
 
                     with gr.Blocks():
-                        audio_prompt_neg_chkbox = gr.Checkbox(label="Append")
-                        audio_prompt_neg_txt = gr.Textbox(label="Negative prompt")
+                        mmaudio_prompt_neg_chkbox = gr.Checkbox(label="Append")
+                        mmaudio_prompt_neg_txt = gr.Textbox(label="Negative prompt")
 
-                    gen_audio_btn = gr.Button("Generate audio")
+                    mmaudio_gen_btn = gr.Button("Generate audio")
+                with gr.Accordion(label="MelQC"):
+                    melqc_overwrite_chkbox = gr.Checkbox(
+                        label="Overwrite audio", visible=False
+                    )
+
+                    with gr.Blocks():
+                        melqc_prompt_chkbox = gr.Checkbox(label="Append")
+                        melqc_prompt_txt = gr.Textbox(label="Positive prompt")
+
+                    with gr.Blocks():
+                        melqc_prompt_neg_chkbox = gr.Checkbox(label="Append")
+                        melqc_prompt_neg_txt = gr.Textbox(label="Negative prompt")
+
+                    melqc_gen_btn = gr.Button("Generate audio")
                 audio_delete_btn = gr.Button("🗑️ Delete")
         with gr.Column(scale=5):
             video_out = gr.Video(sources=[], autoplay=True, loop=True, visible=False)
@@ -79,15 +94,21 @@ def create_outputs_ui(settings):
         "outputDirectory_metadata": outputDirectory_metadata,
         "delete_btn": delete_btn,
         "selected_prefix_state": gr.State(None),
-        "gen_audio_btn": gen_audio_btn,
-        "overwrite_audio_chkbox": overwrite_audio_chkbox,
         "gen_audio_acc": gen_audio_acc,
-        "audio_prompt_txt": audio_prompt_txt,
-        "audio_prompt_neg_txt": audio_prompt_neg_txt,
         "audio_delete_btn": audio_delete_btn,
-        "audio_model_dropdown": audio_model_dropdown,
-        "audio_prompt_chkbox": audio_prompt_chkbox,
-        "audio_prompt_neg_chkbox": audio_prompt_neg_chkbox,
+        "mmaudio_gen_btn": mmaudio_gen_btn,
+        "mmaudio_overwrite_chkbox": mmaudio_overwrite_chkbox,
+        "mmaudio_model_dropdown": mmaudio_model_dropdown,
+        "mmaudio_prompt_chkbox": mmaudio_prompt_chkbox,
+        "mmaudio_prompt_neg_chkbox": mmaudio_prompt_neg_chkbox,
+        "mmaudio_prompt_txt": mmaudio_prompt_txt,
+        "mmaudio_prompt_neg_txt": mmaudio_prompt_neg_txt,
+        "melqc_gen_btn": melqc_gen_btn,
+        "melqc_overwrite_chkbox": melqc_overwrite_chkbox,
+        "melqc_prompt_chkbox": melqc_prompt_chkbox,
+        "melqc_prompt_neg_chkbox": melqc_prompt_neg_chkbox,
+        "melqc_prompt_txt": melqc_prompt_txt,
+        "melqc_prompt_neg_txt": melqc_prompt_neg_txt,
     }
 
 
@@ -250,6 +271,7 @@ def connect_outputs_events(
         gr.State,
         gr.Accordion,
         gr.Checkbox,
+        gr.Checkbox,
     ]:
         if evt.index is None or not gallery_items or evt.index >= len(gallery_items):
             return (
@@ -260,7 +282,8 @@ def connect_outputs_events(
                 gr.update(visible=False),  # delete_btn
                 None,  # selected_prefix_state
                 gr.update(visible=False),  # gen_audio_acc
-                gr.update(visible=False),  # overwrite_audio_chkbox
+                gr.update(visible=False),  # overwrite_mmaudio_chkbox
+                gr.update(visible=False),  # melqc_overwrite_chkbox
             )
 
         prefix = gallery_items[evt.index][1]
@@ -268,7 +291,7 @@ def connect_outputs_events(
             load_video_and_info_from_prefix(prefix)
         )
 
-        overwrite_audio_checkbox_visibility = check_audio(prefix)[0]
+        overwrite_mmaudio_checkbox_visibility = check_audio(prefix)[0]
 
         return (
             gr.update(
@@ -280,7 +303,8 @@ def connect_outputs_events(
             gr.update(visible=bool(original_video_path)),  # delete_btn
             prefix,  # selected_prefix_state
             gr.update(visible=bool(original_video_path)),  # gen_audio_acc
-            overwrite_audio_checkbox_visibility,  # overwrite_audio_chkbox
+            overwrite_mmaudio_checkbox_visibility,  # overwrite_audio_chkbox
+            overwrite_mmaudio_checkbox_visibility,  # melqc_overwrite_chkbox
         )
 
     def send_to_toolbox(selected_video_path) -> tuple[gr.Tab, gr.Tabs]:
@@ -313,14 +337,14 @@ def connect_outputs_events(
             video_duration,
         )
 
-    def generate_audio(
+    def generate_mmaudio(
         selected_prefix: str,
-        audio_model_dropdown: gr.Dropdown,
-        overwrite_audio_chkbox: gr.Checkbox,
-        audio_prompt_txt: gr.Textbox,
-        audio_prompt_neg_txt: gr.Textbox,
-        audio_prompt_chkbox: gr.Checkbox,
-        audio_prompt_neg_chkbox: gr.Checkbox,
+        mmaudio_model_dropdown: gr.Dropdown,
+        mmaudio_overwrite_chkbox: gr.Checkbox,
+        mmaudio_prompt_txt: gr.Textbox,
+        mmaudio_prompt_neg_txt: gr.Textbox,
+        mmaudio_prompt_chkbox: gr.Checkbox,
+        mmaudio_prompt_neg_chkbox: gr.Checkbox,
     ) -> tuple[gr.State]:
         if not selected_prefix:
             return (
@@ -335,7 +359,7 @@ def connect_outputs_events(
 
         logger.info("GENAudio: Loading video")
 
-        if video_audio is not None and overwrite_audio_chkbox is False:
+        if video_audio is not None and mmaudio_overwrite_chkbox is False:
             logging.info(
                 "GENAudio: Audio exists but overwrite audio is unchecked -> skipping"
             )
@@ -352,18 +376,18 @@ def connect_outputs_events(
 
         prompt = metadata.get("prompt", "")
 
-        if audio_prompt_chkbox:
-            prompt += audio_prompt_txt
+        if mmaudio_prompt_chkbox:
+            prompt += mmaudio_prompt_txt
         else:
-            prompt = get_prompt(metadata.get("prompt", ""), audio_prompt_txt)
+            prompt = get_prompt(metadata.get("prompt", ""), mmaudio_prompt_txt)
 
         negative_prompt = metadata.get("negative_prompt", "")
 
-        if audio_prompt_neg_chkbox:
-            negative_prompt += audio_prompt_neg_txt
+        if mmaudio_prompt_neg_chkbox:
+            negative_prompt += mmaudio_prompt_neg_txt
         else:
             negative_prompt = get_prompt(
-                metadata.get("negative_prompt", ""), audio_prompt_neg_txt
+                metadata.get("negative_prompt", ""), mmaudio_prompt_neg_txt
             )
 
         # Append missing words from the DEFAULT_AUDIO_NEGATIVE_PROMPT list to the negative prompt
@@ -384,8 +408,8 @@ def connect_outputs_events(
 
         model_config = None
 
-        if audio_model_dropdown:
-            model_config = all_model_cfg.get(audio_model_dropdown)
+        if mmaudio_model_dropdown:
+            model_config = all_model_cfg.get(mmaudio_model_dropdown)
 
         logger.info(
             f"GENAudio: Generating audio with\n"
@@ -424,6 +448,112 @@ def connect_outputs_events(
             None,  # selected_original_video_path_state
         )
 
+    def generate_melqc(
+        selected_prefix: str,
+        melqc_overwrite_chkbox: gr.Checkbox,
+        melqc_prompt_txt: gr.Textbox,
+        melqc_prompt_neg_txt: gr.Textbox,
+        melqc_prompt_chkbox: gr.Checkbox,
+        melqc_prompt_neg_chkbox: gr.Checkbox,
+    ) -> tuple[gr.State]:
+        if not selected_prefix:
+            return (
+                None,  # selected_original_video_path_state
+            )
+
+        video_file, metadata = get_video_file_and_metadata(selected_prefix)
+        # load the metadata as a json
+        metadata = json.loads(metadata)
+
+        video_file_path, video_audio, duration = get_audio(selected_prefix)
+
+        logger.info("GENAudio: Loading video")
+
+        if video_audio is not None and melqc_overwrite_chkbox is False:
+            logging.info(
+                "GENAudio: Audio exists but overwrite audio is unchecked -> skipping"
+            )
+            return (
+                None,  # selected_original_video_path_state
+            )
+
+        def get_prompt(p: str, b: str) -> str:
+            if p == "":
+                return b
+            if b != "":
+                return b
+            return p
+
+        prompt = metadata.get("prompt", "")
+
+        if melqc_prompt_chkbox:
+            prompt += melqc_prompt_txt
+        else:
+            prompt = get_prompt(metadata.get("prompt", ""), melqc_prompt_txt)
+
+        negative_prompt = metadata.get("negative_prompt", "")
+
+        if melqc_prompt_neg_chkbox:
+            negative_prompt += melqc_prompt_neg_txt
+        else:
+            negative_prompt = get_prompt(
+                metadata.get("negative_prompt", ""), melqc_prompt_neg_txt
+            )
+
+        # Append missing words from the DEFAULT_AUDIO_NEGATIVE_PROMPT list to the negative prompt
+        from modules.MMAudio.app import DEFAULT_AUDIO_NEGATIVE_PROMPT
+
+        missing_words = [
+            word
+            for word in DEFAULT_AUDIO_NEGATIVE_PROMPT
+            if word not in negative_prompt
+        ]
+        if missing_words:
+            if not negative_prompt.endswith(","):
+                negative_prompt += ", "
+            negative_prompt += ", ".join(missing_words)
+
+        steps = metadata.get("steps", 25)
+        cfg_strength = metadata.get("cfg", 1)
+
+        logger.info(
+            f"GENAudio: Generating audio with\n"
+            f" prompt:{str(prompt)}\n"
+            f" negative prompt:{str(negative_prompt)}\n"
+            f" steps:{str(steps)}\n"
+            f" cfg:{str(cfg_strength)}"
+        )
+
+        try:
+            from modules.MelQC.app import add_audio_to_video
+
+            config_path = Path("./modules/MelQC/models/cldm_v15.yaml")
+
+            video_with_audio_path = add_audio_to_video(
+                config_path=config_path,
+                video_path=video_file,
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                sample_step=steps,
+                cfg_scale=cfg_strength,
+                duration=duration,
+                logger=logger,
+                overwrite_orig_file=True,
+            )
+            if video_with_audio_path is not None:
+                logger.info(
+                    "Generating audio finished for video: " + video_with_audio_path.name
+                )
+            else:
+                logger.info("Error generating audio for video: " + video_file.name)
+        except ModuleNotFoundError as e:
+            msg = str(e)
+            logger.error(f"Error generating audio -> {msg}", exc_info=True)
+
+        return (
+            None,  # selected_original_video_path_state
+        )
+
     def delete_audio(selected_prefix: str):
         if not selected_prefix:
             return
@@ -443,10 +573,11 @@ def connect_outputs_events(
         else:
             logger.info(f"No audio found for video {str(video_file_path)}")
 
-    def check_audio(selected_prefix: str) -> tuple[gr.Checkbox]:
+    def check_audio(selected_prefix: str) -> tuple[gr.Checkbox, gr.Checkbox]:
         if not selected_prefix:
             return (
                 gr.update(visible=False),  # overwrite_audio_chkbox
+                gr.update(visible=False),  # melqc_overwrite_chkbox
             )
 
         try:
@@ -454,10 +585,12 @@ def connect_outputs_events(
             if video_audio is not None:
                 return (
                     gr.update(visible=True, value=False),  # overwrite_audio_chkbox
+                    gr.update(visible=True, value=False),  # melqc_overwrite_chkbox
                 )
             else:
                 return (
                     gr.update(visible=False),  # overwrite_audio_chkbox
+                    gr.update(visible=False),  # melqc_overwrite_chkbox
                 )
         except Exception as e:
             logger.error(f"Error checking audio: {e}")
@@ -477,7 +610,8 @@ def connect_outputs_events(
             o["delete_btn"],
             o["selected_prefix_state"],
             o["gen_audio_acc"],
-            o["overwrite_audio_chkbox"],
+            o["mmaudio_overwrite_chkbox"],
+            o["melqc_overwrite_chkbox"],
         ],
     )
     o["send_to_toolbox_btn"].click(
@@ -497,16 +631,30 @@ def connect_outputs_events(
             o["gen_audio_acc"],
         ],
     )
-    o["gen_audio_btn"].click(
-        fn=generate_audio,
+    o["mmaudio_gen_btn"].click(
+        fn=generate_mmaudio,
         inputs=[
             o["selected_prefix_state"],
-            o["audio_model_dropdown"],
-            o["overwrite_audio_chkbox"],
-            o["audio_prompt_txt"],
-            o["audio_prompt_neg_txt"],
-            o["audio_prompt_chkbox"],
-            o["audio_prompt_neg_chkbox"],
+            o["mmaudio_model_dropdown"],
+            o["mmaudio_overwrite_chkbox"],
+            o["mmaudio_prompt_txt"],
+            o["mmaudio_prompt_neg_txt"],
+            o["mmaudio_prompt_chkbox"],
+            o["mmaudio_prompt_neg_chkbox"],
+        ],
+        outputs=[
+            o["selected_original_video_path_state"],
+        ],
+    )
+    o["melqc_gen_btn"].click(
+        fn=generate_melqc,
+        inputs=[
+            o["selected_prefix_state"],
+            o["melqc_overwrite_chkbox"],
+            o["melqc_prompt_txt"],
+            o["melqc_prompt_neg_txt"],
+            o["melqc_prompt_chkbox"],
+            o["melqc_prompt_neg_chkbox"],
         ],
         outputs=[
             o["selected_original_video_path_state"],
@@ -525,7 +673,8 @@ def connect_outputs_events(
             o["selected_prefix_state"],
         ],
         outputs=[
-            o["overwrite_audio_chkbox"],
+            o["mmaudio_overwrite_chkbox"],
+            o["melqc_overwrite_chkbox"],
         ],
     )
     return get_gallery_items

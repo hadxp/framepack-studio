@@ -35,6 +35,11 @@ realesrgan
 colorlog
 
 
-# mmaudio
+# mmaudio (audio generation)
 moviepy
+
+# mmaudio
 -r ./modules/MMAudio/requirements.txt
+
+# melqc (audio generation)
+-r ./modules/MelQC/requirements.txt

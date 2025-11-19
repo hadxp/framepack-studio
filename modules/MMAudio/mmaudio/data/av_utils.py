@@ -110,8 +110,14 @@ def reencode_with_audio(video_info: VideoInfo, output_path: Path, audio: torch.T
     for packet in output_video_stream.encode():
         container.mux(packet)
 
-    # convert float tensor audio to numpy array
-    audio_np = audio.numpy().astype(np.float32)
+    has_numpy = hasattr(audio, "numpy")
+    if has_numpy:
+        # convert float tensor audio to numpy array
+        audio_np = audio.numpy().astype(np.float32)
+    else:
+        # convert 1d numpy array to 2d (1, num_samples)
+        audio_np = audio.astype(np.float32).reshape(1, -1)
+
     audio_frame = AudioFrame.from_ndarray(audio_np, format='flt', layout='mono')
     audio_frame.sample_rate = sampling_rate
 

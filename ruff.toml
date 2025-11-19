@@ -1,5 +1,6 @@
 exclude = [
     "modules/toolbox/RIFE",
     "diffusers_helper",
-    "modules/MMAudio"
+    "modules/MMAudio",
+	"modules/MelQC",
 ]

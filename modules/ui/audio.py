@@ -10,6 +10,17 @@ import gradio as gr
 logger = logging.getLogger(__name__)
 
 
+def _ensure_melqc_on_path():
+    """
+    Ensure that the 'melqc' package is importable as a top-level package.
+    MelQC uses absolute imports like, so we need modules/MelQC on sys.path.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    melqc_root = os.path.abspath(os.path.join(here, "..", "MelQC"))
+    if melqc_root not in sys.path:
+        sys.path.insert(0, melqc_root)
+
+
 def _ensure_mmaudio_on_path():
     """
     Ensure that the 'mmaudio' package (from modules/MMAudio) is importable as a top-level package.
