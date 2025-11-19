@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from ldm.models.diffusion.plms import PLMSSampler
 from pytorch_lightning import seed_everything
 from cldm.model import create_model_args, load_state_dict
-from moviepy import VideoFileClip
+from moviepy import VideoFileClip, AudioFileClip
 from foleycrafter.pipelines.auffusion_pipeline import Generator
 
 from SyncFormer.utils import instantiate_from_config
@@ -125,6 +125,8 @@ class MelQCD:
         if not checkpoint_path.exists() or not syncformer_checkpoint_path.exists() or not codepredictor_checkpoint_path.exists():
             return "Failed"
 
+        self.base_local_download_dir = base_local_download_dir
+
         # load clip and syncformer model
         self.model_clip = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
         self.processor_clip = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14")
@@ -175,7 +177,7 @@ class MelQCD:
         seed: str,
         duration: int,
         overwrite_orig_file: bool,
-        sampling_rate: int = 16000,
+        sampling_rate: int = 44100,
     ) -> Path:
         # prepare features
         frames_pad = process_video(video_path)
@@ -284,8 +286,8 @@ class MelQCD:
 
         results = ((x_samples + 1) / 2).clip(0, 1)
         res_mel = denormalize_spectrogram(results)
-        audio = self.vocoder.inference(res_mel, lengths=160000)[0]
-        audio = audio[: int(10 * 16000)]
+        audio = self.vocoder.inference(res_mel, lengths=sampling_rate)[0]
+        audio = audio[: int(10 * sampling_rate)]
 
         video_filename = video_path.name
 
@@ -301,12 +303,13 @@ class MelQCD:
 
         self.logger.info("Audio generated, adding to video")
 
-        from modules.MMAudio.mmaudio.eval_utils import load_video, make_video
-
-        # typeof(audio) = numpy.ndarray
-
-        video_info = load_video(video_path, duration)
-        make_video(video_info, video_with_audio_path, audio, sampling_rate=sampling_rate)
+        video_clip = VideoFileClip(str(video_path))
+        temp_wavfile_path = self.base_local_download_dir / "temp" / 'temp.wav'
+        sf.write(temp_wavfile_path, audio, sampling_rate)
+        audio_clip = AudioFileClip(str(temp_wavfile_path))
+        audio_clip = audio_clip.subclip(0, 10)
+        video_with_new_audio = video_clip.set_audio(audio_clip)
+        video_with_new_audio.write_videofile(str(video_with_audio_path), codec='libx264', audio_codec='aac')
 
         return video_with_audio_path
 
